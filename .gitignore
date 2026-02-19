@@ -3,3 +3,20 @@ __pycache__/
 *.pyc
 node_modules/
 .env
+# Uploads
+backend/app/uploads/
+
+# ML checkpoints
+backend/ml/checkpoints/
+*.pth
+*.h5
+
+# Data
+data/
+
+# Frontend build
+frontend-web/build/
+
+# OS
+.DS_Store
+Thumbs.db
