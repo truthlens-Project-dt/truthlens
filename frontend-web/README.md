@@ -68,3 +68,38 @@ This section has moved here: [https://facebook.github.io/create-react-app/docs/d
 ### `npm run build` fails to minify
 
 This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+
+
+---
+
+# TruthLens Frontend
+
+## Setup
+
+npm install  
+npm start  
+
+## Stack
+
+React 18  
+axios (API calls)  
+react-dropzone (drag and drop)  
+
+## Features
+
+Drag-and-drop video upload (MP4, AVI, MOV)  
+Real-time upload feedback  
+Result display: verdict, confidence score, frame count  
+Error handling with dismiss button  
+Responsive dark gradient UI  
+
+## Connecting to Backend
+
+Backend must be running at http://localhost:8000  
+
+Start with:
+
+uvicorn main:app --reload
+
+inside backend/app/
+

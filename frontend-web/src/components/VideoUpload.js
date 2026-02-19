@@ -32,6 +32,13 @@ function VideoUpload() {
   // Upload to backend
   const handleUpload = async () => {
     if (!file) return;
+    // ── Frontend size guard (saves bandwidth) ──────────
+    const MAX_MB = 100;
+    if (file.size > MAX_MB * 1024 * 1024) {
+        setError(`File too large. Maximum size is ${MAX_MB} MB.`);
+        return;
+    }
+    // ────────────────────────────────────────────────────
 
     setUploading(true);
     setResult(null);
@@ -101,6 +108,14 @@ function VideoUpload() {
           <p>📤 Drag video here or click to select</p>
         )}
       </div>
+      {/* Supported formats info */}
+      <p style={{
+        color: 'rgba(255,255,255,0.4)',
+        fontSize: '0.8em',
+        marginTop: '8px'
+      }}>
+        Supports: MP4, AVI, MOV — Max 100 MB
+      </p>
 
       {/* File info */}
       {file && (
