@@ -9,16 +9,14 @@ function VideoUpload() {
   const [result, setResult]       = useState(null);
   const [error, setError]         = useState(null);
 
-  // Handle file drop or select
   const onDrop = (acceptedFiles) => {
     if (acceptedFiles.length === 0) return;
     setFile(acceptedFiles[0]);
-    setResult(null);   // clear old result
-    setError(null);    // clear old error
+    setResult(null);
+    setError(null);
     console.log('File selected:', acceptedFiles[0].name);
   };
 
-  // Dropzone setup
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
     accept: {
@@ -29,36 +27,27 @@ function VideoUpload() {
     maxFiles: 1,
   });
 
-  // Upload to backend
   const handleUpload = async () => {
     if (!file) return;
-    // ── Frontend size guard (saves bandwidth) ──────────
+
     const MAX_MB = 100;
     if (file.size > MAX_MB * 1024 * 1024) {
-        setError(`File too large. Maximum size is ${MAX_MB} MB.`);
-        return;
+      setError(`File too large. Maximum size is ${MAX_MB} MB.`);
+      return;
     }
-    // ────────────────────────────────────────────────────
 
     setUploading(true);
     setResult(null);
     setError(null);
 
-    // ✅ THE FIX: Send as FormData with correct field name
     const formData = new FormData();
-    formData.append('file', file, file.name);  // field name must be 'file'
+    formData.append('file', file, file.name);
 
     try {
       const response = await axios.post(
         'http://localhost:8000/api/v1/detect/video',
         formData,
         {
-          headers: {
-            // ✅ Let browser set Content-Type automatically
-            // DO NOT manually set 'Content-Type': 'multipart/form-data'
-            // (axios does this correctly with the boundary)
-          },
-          // Show upload progress
           onUploadProgress: (progressEvent) => {
             const percent = Math.round(
               (progressEvent.loaded * 100) / progressEvent.total
@@ -69,17 +58,16 @@ function VideoUpload() {
       );
 
       setResult(response.data);
-      console.log('✅ Result:', response.data);
+      console.log('Result:', response.data);
 
     } catch (err) {
-      console.error('❌ Error:', err);
+      console.error('Error:', err);
 
-      // Show detailed error message
       if (err.response) {
-        // Server responded with error
-        setError(`Server error ${err.response.status}: ${JSON.stringify(err.response.data)}`);
+        setError(
+          `Server error ${err.response.status}: ${JSON.stringify(err.response.data)}`
+        );
       } else if (err.request) {
-        // No response received
         setError('No response from server. Is backend running?');
       } else {
         setError(err.message);
@@ -94,7 +82,6 @@ function VideoUpload() {
       <h1>🔍 TruthLens</h1>
       <p className="subtitle">AI-Powered Deepfake Detection</p>
 
-      {/* Upload Zone */}
       <div
         {...getRootProps()}
         className={`dropzone ${isDragActive ? 'active' : ''}`}
@@ -108,31 +95,29 @@ function VideoUpload() {
           <p>📤 Drag video here or click to select</p>
         )}
       </div>
-      {/* Supported formats info */}
-      <p style={{
-        color: 'rgba(255,255,255,0.4)',
-        fontSize: '0.8em',
-        marginTop: '8px'
-      }}>
+
+      <p
+        style={{
+          color: 'rgba(255,255,255,0.4)',
+          fontSize: '0.8em',
+          marginTop: '8px',
+        }}
+      >
         Supports: MP4, AVI, MOV — Max 100 MB
       </p>
 
-      {/* File info */}
       {file && (
         <p className="file-info">
-          Size: {(file.size / 1024 / 1024).toFixed(2)} MB &nbsp;|&nbsp;
-          Type: {file.type}
+          Size: {(file.size / 1024 / 1024).toFixed(2)} MB | Type: {file.type}
         </p>
       )}
 
-      {/* Analyze Button */}
       {file && !uploading && (
         <button onClick={handleUpload} className="upload-btn">
           🔍 Analyze Video
         </button>
       )}
 
-      {/* Loading */}
       {uploading && (
         <div className="loading">
           <div className="spinner"></div>
@@ -140,7 +125,6 @@ function VideoUpload() {
         </div>
       )}
 
-      {/* Error display - now shows full error */}
       {error && (
         <div className="error-box">
           <h3>❌ Error</h3>
@@ -149,38 +133,76 @@ function VideoUpload() {
         </div>
       )}
 
-      {/* Result */}
       {result && (
-        <div className={`result result-${result.verdict?.toLowerCase()}`}>
-          <h2>
-            {result.verdict === 'AUTHENTIC' && '✅'}
-            {result.verdict === 'FAKE'      && '❌'}
-            {result.verdict === 'SUSPICIOUS'&& '⚠️'}
-            {result.verdict === 'NO_FACES'  && '👤'}
-            &nbsp;{result.verdict}
-          </h2>
+        <>
+          <div
+            className={`result result-${result.verdict?.toLowerCase()}`}
+          >
+            <h2>
+              {result.verdict === 'AUTHENTIC' && '✅'}
+              {result.verdict === 'FAKE' && '❌'}
+              {result.verdict === 'SUSPICIOUS' && '⚠️'}
+              {result.verdict === 'NO_FACES' && '👤'}
+              &nbsp;{result.verdict}
+            </h2>
 
-          <div className="result-details">
-            <div className="detail">
-              <span>Confidence</span>
-              <strong>{(result.confidence * 100).toFixed(1)}%</strong>
+            <div className="result-details">
+              <div className="detail">
+                <span>Confidence</span>
+                <strong>
+                  {(result.confidence * 100).toFixed(1)}%
+                </strong>
+              </div>
+
+              <div className="detail">
+                <span>Fake Probability</span>
+                <strong>
+                  {(result.fake_probability * 100).toFixed(1)}%
+                </strong>
+              </div>
+
+              <div className="detail">
+                <span>Frames Analyzed</span>
+                <strong>{result.frames_analyzed}</strong>
+              </div>
+
+              <div className="detail">
+                <span>Total Frames</span>
+                <strong>{result.total_frames}</strong>
+              </div>
+
+              {result.processing_time_sec !== undefined && (
+                <div className="detail">
+                  <span>Processing Time</span>
+                  <strong>
+                    {result.processing_time_sec}s
+                  </strong>
+                </div>
+              )}
             </div>
-            <div className="detail">
-              <span>Fake Probability</span>
-              <strong>{(result.fake_probability * 100).toFixed(1)}%</strong>
-            </div>
-            <div className="detail">
-              <span>Frames Analyzed</span>
-              <strong>{result.frames_analyzed}</strong>
-            </div>
-            <div className="detail">
-              <span>Total Frames</span>
-              <strong>{result.total_frames}</strong>
-            </div>
+
+            <p className="filename">📁 {result.filename}</p>
           </div>
 
-          <p className="filename">📁 {result.filename}</p>
-        </div>
+          <button
+            onClick={() => {
+              setFile(null);
+              setResult(null);
+            }}
+            style={{
+              background: 'transparent',
+              border: '1px solid rgba(255,255,255,0.3)',
+              color: 'rgba(255,255,255,0.7)',
+              padding: '10px 30px',
+              borderRadius: '25px',
+              cursor: 'pointer',
+              marginTop: '10px',
+              fontSize: '0.9em',
+            }}
+          >
+            🔄 Try Another Video
+          </button>
+        </>
       )}
     </div>
   );

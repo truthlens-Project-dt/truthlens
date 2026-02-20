@@ -10,6 +10,7 @@ import shutil
 import sys
 import logging
 from datetime import datetime
+import time
 
 # This lets Python find your ml/ folder
 # because ml/ is in backend/, not backend/app/
@@ -158,6 +159,7 @@ def health_check():
 
 @app.post("/api/v1/detect/video")
 async def detect_video(file: UploadFile = File(...)):
+    start_time = time.time()
     """
     Analyze a video for deepfake content.
 
@@ -235,10 +237,12 @@ async def detect_video(file: UploadFile = File(...)):
         result = detector.predict_video(faces)
 
         # ── STEP 7: Add extra info to result ────────
-        result["filename"]     = file.filename
+        # ── STEP 7: Add metadata ────────────────────
+        result["filename"] = file.filename
         result["total_frames"] = len(frames)
         result["file_size_mb"] = round(file_size_mb, 2)
-        result["timestamp"]    = datetime.now().isoformat()
+        result["timestamp"] = datetime.now().isoformat()
+        result["processing_time_sec"] = round(time.time() - start_time, 2)
 
         logger.info(f"✅ Detection complete!")
         logger.info(f"   Verdict:    {result['verdict']}")
@@ -334,3 +338,4 @@ if __name__ == "__main__":
         reload=True,      # Auto-restart when you save the file (great for development!)
         log_level="info"
     )
+    
