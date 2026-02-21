@@ -136,15 +136,39 @@ def root():
 
 @app.get("/api/v1/health")
 def health_check():
-    """Detailed health check for all components."""
+    from pathlib import Path
+    import json
+
+    checkpoint_path = Path(__file__).parent.parent / "ml" / "checkpoints" / "best_model.pth"
+    metrics_path    = Path(__file__).parent.parent / "ml" / "checkpoints" / "eval_metrics.json"
+
+    checkpoint_exists = checkpoint_path.exists()
+    val_acc = None
+    if checkpoint_exists:
+        try:
+            ckpt    = torch.load(checkpoint_path, map_location="cpu")
+            val_acc = round(ckpt.get("val_acc", 0) * 100, 1)
+        except Exception:
+            pass
+
+    eval_metrics = None
+    if metrics_path.exists():
+        with open(metrics_path) as f:
+            eval_metrics = json.load(f)
+
     return {
         "status": "healthy",
         "components": {
             "api":             "ready",
-            "video_processor": "ready" if ML_LOADED else "not loaded",
-            "detector":        "ready (placeholder)" if ML_LOADED else "not loaded",
-            "upload_folder":   str(UPLOAD_DIR.resolve()),
+            "video_processor": "ready" if ML_LOADED else "not_loaded",
+            "detector":        "ready" if ML_LOADED else "not_loaded",
+            "model_type":      "EfficientNet-B0" if ML_LOADED else "none",
+            "checkpoint":      f"loaded (val_acc={val_acc}%)" if checkpoint_exists else "not found (using random)",
         },
+        "session": {
+            "detections_this_session": len(detection_history),
+        },
+        "eval_metrics": eval_metrics,
         "timestamp": datetime.now().isoformat()
     }
 
