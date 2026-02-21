@@ -1,30 +1,37 @@
 import React from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { NavigationContainer } from '@react-navigation/native';
-import { createStackNavigator } from '@react-navigation/stack';
-import HomeScreen from './src/screens/HomeScreen';
-import { colors } from './src/theme/colors';
+import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import HomeScreen    from './src/screens/HomeScreen';
+import HistoryScreen from './src/screens/HistoryScreen';
+import { colors }   from './src/theme/colors';
 
-const Stack = createStackNavigator();
+// Install bottom tabs if not done: npm install @react-navigation/bottom-tabs
+const Tab = createBottomTabNavigator();
 
 export default function App() {
   return (
     <NavigationContainer>
       <StatusBar style="light" />
-      <Stack.Navigator
+      <Tab.Navigator
         screenOptions={{
-          headerStyle:      { backgroundColor: colors.background },
-          headerTintColor:  colors.text,
-          headerTitleStyle: { fontWeight: 'bold' },
-          cardStyle:        { backgroundColor: colors.background },
+          headerShown:       false,
+          tabBarStyle:       { backgroundColor: colors.surface, borderTopColor: colors.surfaceLight },
+          tabBarActiveTintColor:   colors.primary,
+          tabBarInactiveTintColor: colors.textMuted,
         }}
       >
-        <Stack.Screen
-          name="Home"
+        <Tab.Screen
+          name="Detect"
           component={HomeScreen}
-          options={{ title: '🔍 TruthLens', headerShown: false }}
+          options={{ tabBarLabel: 'Detect', tabBarIcon: () => null }}
         />
-      </Stack.Navigator>
+        <Tab.Screen
+          name="History"
+          component={HistoryScreen}
+          options={{ tabBarLabel: 'History', tabBarIcon: () => null }}
+        />
+      </Tab.Navigator>
     </NavigationContainer>
   );
 }
