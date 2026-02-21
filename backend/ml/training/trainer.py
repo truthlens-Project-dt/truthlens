@@ -128,10 +128,7 @@ def train(
 
 if __name__ == "__main__":
     train(
-        data_dir   = "../../../data",
-        epochs     = 5,        # Quick test — use 20+ for real training
-        batch_size = 8,
-        lr         = 1e-4,
-        save_dir   = "../../../backend/ml/checkpoints"
+        data_dir="../../../data",
+        epochs=20,
+        batch_size=16
     )
-    

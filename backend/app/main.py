@@ -11,6 +11,8 @@ import sys
 import logging
 from datetime import datetime
 import time
+import uuid
+
 
 # This lets Python find your ml/ folder
 # because ml/ is in backend/, not backend/app/
@@ -82,6 +84,9 @@ app.add_middleware(
 UPLOAD_DIR = Path("./uploads")
 UPLOAD_DIR.mkdir(exist_ok=True)
 logger.info(f"Upload folder: {UPLOAD_DIR.resolve()}")
+# In-memory detection history (resets on server restart — DB comes Week 4)
+from collections import deque
+detection_history = deque(maxlen=50)   # Keep last 50 results
 
 # INITIALIZE ML COMPONENTS
 # VideoProcessor: extracts frames from videos
@@ -159,119 +164,69 @@ def health_check():
 
 @app.post("/api/v1/detect/video")
 async def detect_video(file: UploadFile = File(...)):
+    request_id = str(uuid.uuid4())[:8]   # Short ID for log tracing
     start_time = time.time()
-    """
-    Analyze a video for deepfake content.
+    logger.info(f"[{request_id}] 📹 Received: {file.filename}")
 
-    Args:
-        file: Video file uploaded from frontend (MP4, AVI, MOV)
-
-    Returns:
-        JSON with verdict, confidence, and analysis details
-    """
-
-    logger.info(f"📹 Received file: {file.filename}")
-    logger.info(f"   Content type: {file.content_type}")
-
-    # ── STEP 1: Validate file type ──────────────────
-    allowed_extensions = [".mp4", ".avi", ".mov"]
-    file_extension     = Path(file.filename).suffix.lower()
-
-    if file_extension not in allowed_extensions:
-        logger.warning(f"❌ Invalid file type: {file_extension}")
+    allowed = [".mp4", ".avi", ".mov"]
+    ext = Path(file.filename).suffix.lower()
+    if ext not in allowed:
         raise HTTPException(
             status_code=400,
-            detail=f"Invalid file type '{file_extension}'. Allowed: {allowed_extensions}"
+            detail={"error": f"Invalid type '{ext}'", "allowed": allowed, "request_id": request_id}
         )
 
-    # ── STEP 2: Validate file size (max 100 MB) ─────
-    MAX_SIZE_BYTES = 100 * 1024 * 1024  # 100 MB
-    file_content   = await file.read()
-    file_size_mb   = len(file_content) / (1024 * 1024)
+    content = await file.read()
+    size_mb  = len(content) / (1024 * 1024)
 
-    if len(file_content) > MAX_SIZE_BYTES:
-        logger.warning(f"❌ File too large: {file_size_mb:.1f} MB")
+    if len(content) > 100 * 1024 * 1024:
         raise HTTPException(
             status_code=413,
-            detail=f"File too large ({file_size_mb:.1f} MB). Max allowed: 100 MB"
+            detail={"error": f"File too large ({size_mb:.1f} MB)", "max_mb": 100, "request_id": request_id}
         )
 
-    logger.info(f"   File size: {file_size_mb:.2f} MB ✅")
-
-    # ── STEP 3: Save file temporarily ───────────────
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    temp_filename = f"{timestamp}_{file.filename}"
-    temp_path     = UPLOAD_DIR / temp_filename
-
+    temp_path = UPLOAD_DIR / f"{request_id}_{file.filename}"
     try:
-        # Write file to disk
-        with temp_path.open("wb") as buffer:
-            buffer.write(file_content)
+        temp_path.write_bytes(content)
 
-        logger.info(f"💾 Saved temporarily: {temp_path}")
-
-        # ── STEP 4: Check if ML is loaded ───────────
         if not ML_LOADED:
-            logger.warning("⚠️  ML not loaded, returning demo result")
             return JSONResponse(content={
-                "verdict":          "DEMO_MODE",
-                "confidence":       0.0,
-                "fake_probability": 0.0,
-                "frames_analyzed":  0,
-                "total_frames":     0,
-                "filename":         file.filename,
-                "file_size_mb":     round(file_size_mb, 2),
-                "timestamp":        datetime.now().isoformat(),
-                "message":          "ML modules not loaded. Check video_processor.py and detector.py"
+                "verdict": "DEMO_MODE", "confidence": 0.0,
+                "fake_probability": 0.0, "frames_analyzed": 0,
+                "total_frames": 0, "filename": file.filename,
+                "message": "ML not loaded", "request_id": request_id
             })
 
-        # ── STEP 5: Extract frames from video ───────
-        logger.info("🔍 Extracting frames...")
         frames, faces = video_processor.process_video(str(temp_path))
+        result        = detector.predict_video(faces)
 
-        logger.info(f"   Frames extracted: {len(frames)}")
-        logger.info(f"   Faces detected:   {sum(1 for f in faces if f is not None)}")
-
-        # ── STEP 6: Run deepfake detection ──────────
-        logger.info("🤖 Running deepfake detection...")
-        result = detector.predict_video(faces)
-
-        # ── STEP 7: Add extra info to result ────────
-        # ── STEP 7: Add metadata ────────────────────
-        result["filename"] = file.filename
-        result["total_frames"] = len(frames)
-        result["file_size_mb"] = round(file_size_mb, 2)
-        result["timestamp"] = datetime.now().isoformat()
+        result["filename"]            = file.filename
+        result["total_frames"]        = len(frames)
+        result["file_size_mb"]        = round(size_mb, 2)
+        result["timestamp"]           = datetime.now().isoformat()
         result["processing_time_sec"] = round(time.time() - start_time, 2)
+        result["request_id"]          = request_id
 
-        logger.info(f"✅ Detection complete!")
-        logger.info(f"   Verdict:    {result['verdict']}")
-        logger.info(f"   Confidence: {result['confidence']:.2%}")
-
+        logger.info(f"[{request_id}] ✅ {result['verdict']} ({result['confidence']:.0%}) in {result['processing_time_sec']}s")
+        # Store in history
+        detection_history.appendleft({
+            "request_id":          result["request_id"],
+            "filename":            result["filename"],
+            "verdict":             result["verdict"],
+            "confidence":          result["confidence"],
+            "processing_time_sec": result["processing_time_sec"],
+            "timestamp":           result["timestamp"],
+        })
         return JSONResponse(content=result)
 
     except ValueError as e:
-        # Video file can't be opened / processed
-        logger.error(f"❌ Video processing error: {e}")
-        raise HTTPException(
-            status_code=422,
-            detail=f"Could not process video: {str(e)}"
-        )
-
+        raise HTTPException(status_code=422, detail={"error": str(e), "request_id": request_id})
     except Exception as e:
-        # Unexpected error
-        logger.error(f"❌ Unexpected error: {e}", exc_info=True)
-        raise HTTPException(
-            status_code=500,
-            detail=f"Internal server error: {str(e)}"
-        )
-
+        logger.error(f"[{request_id}] ❌ {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail={"error": str(e), "request_id": request_id})
     finally:
-        # ── ALWAYS delete temp file ─────────────────
-        # Even if there's an error, clean up the file
         if temp_path.exists():
             temp_path.unlink()
-            logger.info(f"🗑️  Temp file deleted: {temp_filename}")
 
 
 # ROUTE 4: DETECT IMAGE
@@ -311,16 +266,60 @@ async def detect_image(file: UploadFile = File(...)):
 # (Placeholder - database coming in Week 5)
 
 @app.get("/api/v1/history")
-def get_history():
-    """
-    Get recent detection history.
-    Placeholder - database will be added in Week 5.
-    """
+def get_history(limit: int = 10):
+    items = list(detection_history)[:limit]
     return {
-        "message": "History feature coming in Week 5",
-        "detections": []
+        "count":      len(items),
+        "results":    items,
+        "message":    "In-memory only — resets on restart. DB coming Week 4."
+    }
+@app.get("/api/v1/stats")
+def get_stats():
+    """Aggregate stats across all detections this session."""
+    history = list(detection_history)
+    if not history:
+        return {"message": "No detections yet", "total": 0}
+
+    verdicts = [r["verdict"] for r in history]
+    times    = [r["processing_time_sec"] for r in history if r.get("processing_time_sec")]
+
+    from collections import Counter
+    verdict_counts = Counter(verdicts)
+
+    return {
+        "total_detections":    len(history),
+        "verdict_breakdown":   dict(verdict_counts),
+        "avg_processing_time": round(sum(times) / len(times), 2) if times else 0,
+        "fastest_sec":         min(times) if times else 0,
+        "slowest_sec":         max(times) if times else 0,
+    }
+@app.get("/api/v1/model/info")
+def model_info():
+    """Return training metrics and model status."""
+    import json
+    from pathlib import Path
+
+    checkpoint_dir = Path(__file__).parent.parent / "ml" / "checkpoints"
+    metrics_path   = checkpoint_dir / "eval_metrics.json"
+    history_path   = checkpoint_dir / "training_history.json"
+
+    response = {
+        "model":      "EfficientNet-B0",
+        "status":     "loaded" if ML_LOADED else "not_loaded",
+        "checkpoint": str(checkpoint_dir / "best_model.pth"),
     }
 
+    if metrics_path.exists():
+        with open(metrics_path) as f:
+            response["eval_metrics"] = json.load(f)
+
+    if history_path.exists():
+        with open(history_path) as f:
+            data = json.load(f)
+            response["best_val_acc"]  = data.get("best_val_acc")
+            response["epochs_trained"] = len(data.get("history", []))
+
+    return JSONResponse(content=response)
 
 # ─────────────────────────────────────────────
 # RUN THE SERVER
@@ -338,4 +337,3 @@ if __name__ == "__main__":
         reload=True,      # Auto-restart when you save the file (great for development!)
         log_level="info"
     )
-    
