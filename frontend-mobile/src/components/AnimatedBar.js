@@ -1,24 +1,22 @@
-import React, { useEffect } from 'react';
-import { View, Text, StyleSheet } from 'react-native';
-import Animated, {
-  useSharedValue, useAnimatedStyle,
-  withTiming, Easing
-} from 'react-native-reanimated';
+import React, { useEffect, useRef } from 'react';
+import { View, Text, StyleSheet, Animated } from 'react-native';
 import { colors } from '../theme/colors';
 
-export default function AnimatedBar({ label, value, color, delay = 0 }) {
-  const width = useSharedValue(0);
+export default function AnimatedBar({ label, value, color }) {
+  const anim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    width.value = withTiming(value, {
-      duration: 900,
-      easing: Easing.out(Easing.cubic),
-    });
+    Animated.timing(anim, {
+      toValue:         value,
+      duration:        900,
+      useNativeDriver: false,   // width animation can't use native driver
+    }).start();
   }, [value]);
 
-  const animStyle = useAnimatedStyle(() => ({
-    width: `${width.value}%`,
-  }));
+  const width = anim.interpolate({
+    inputRange:  [0, 100],
+    outputRange: ['0%', '100%'],
+  });
 
   return (
     <View style={styles.container}>
@@ -27,17 +25,17 @@ export default function AnimatedBar({ label, value, color, delay = 0 }) {
         <Text style={[styles.pct, { color }]}>{value.toFixed(1)}%</Text>
       </View>
       <View style={styles.track}>
-        <Animated.View style={[styles.fill, { backgroundColor: color }, animStyle]} />
+        <Animated.View style={[styles.fill, { backgroundColor: color, width }]} />
       </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container:  { marginBottom: 14 },
-  labelRow:   { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 5 },
-  label:      { fontSize: 13, color: '#666' },
-  pct:        { fontSize: 13, fontWeight: 'bold' },
-  track:      { height: 8, backgroundColor: '#eee', borderRadius: 10, overflow: 'hidden' },
-  fill:       { height: '100%', borderRadius: 10 },
+  container: { marginBottom: 14 },
+  labelRow:  { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 5 },
+  label:     { fontSize: 13, color: '#666' },
+  pct:       { fontSize: 13, fontWeight: 'bold' },
+  track:     { height: 8, backgroundColor: '#eee', borderRadius: 10, overflow: 'hidden' },
+  fill:      { height: '100%', borderRadius: 10 },
 });

@@ -6,6 +6,7 @@ import {
 import * as DocumentPicker from 'expo-document-picker';
 import axios from 'axios';
 import { colors } from '../theme/colors';
+import AnimatedBar from '../components/AnimatedBar';
 
 // ⚠️ Change this to your computer's local IP when testing on a physical device
 // e.g. 'http://192.168.1.42:8000'
@@ -129,16 +130,24 @@ export default function HomeScreen() {
           <Text style={styles.resultEmoji}>{cfg.emoji}</Text>
           <Text style={[styles.resultVerdict, { color: cfg.color }]}>{cfg.label}</Text>
 
+          {/* Animated Bars */}
+          <AnimatedBar
+            label="Confidence"
+            value={result.confidence * 100}
+            color={cfg.color}
+          />
+          <AnimatedBar
+            label="Fake Probability"
+            value={result.fake_probability * 100}
+            color={result.fake_probability > 0.5 ? colors.fake : colors.authentic}
+          />
+
+          {/* Other Stats */}
           <View style={styles.statsGrid}>
-            <StatBox label="Confidence"      value={`${(result.confidence    * 100).toFixed(1)}%`} />
-            <StatBox label="Fake Probability" value={`${(result.fake_probability * 100).toFixed(1)}%`} />
-            <StatBox label="Frames Analyzed"  value={result.frames_analyzed}  />
-            <StatBox label="Total Frames"     value={result.total_frames}      />
+            <StatBox label="Frames Analyzed"  value={result.frames_analyzed} />
+            <StatBox label="Total Frames"     value={result.total_frames} />
             {result.processing_time_sec !== undefined && (
               <StatBox label="Process Time" value={`${result.processing_time_sec}s`} />
-            )}
-            {result.file_size_mb !== undefined && (
-              <StatBox label="File Size" value={`${result.file_size_mb} MB`} />
             )}
           </View>
 
