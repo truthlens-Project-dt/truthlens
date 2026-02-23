@@ -2,14 +2,17 @@ import React, { useState } from 'react';
 import axios from 'axios';
 import { useDropzone } from 'react-dropzone';
 import ResultCard from './ResultCard';
+import { useTheme } from '../theme/ThemeContext';
 import './VideoUpload.css';
 
 function VideoUpload() {
-  const [file,       setFile]       = useState(null);
-  const [uploading,  setUploading]  = useState(false);
-  const [uploadPct,  setUploadPct]  = useState(0);
-  const [result,     setResult]     = useState(null);
-  const [error,      setError]      = useState(null);
+  const [file, setFile] = useState(null);
+  const [uploading, setUploading] = useState(false);
+  const [uploadPct, setUploadPct] = useState(0);
+  const [result, setResult] = useState(null);
+  const [error, setError] = useState(null);
+
+  const { theme, mode, toggle } = useTheme();
 
   const onDrop = (acceptedFiles) => {
     if (!acceptedFiles.length) return;
@@ -21,7 +24,7 @@ function VideoUpload() {
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
     accept: {
-      'video/mp4':       ['.mp4'],
+      'video/mp4': ['.mp4'],
       'video/x-msvideo': ['.avi'],
       'video/quicktime': ['.mov'],
     },
@@ -56,6 +59,7 @@ function VideoUpload() {
           },
         }
       );
+
       setResult(response.data);
 
     } catch (err) {
@@ -79,13 +83,44 @@ function VideoUpload() {
   };
 
   return (
-    <div className="container">
+    <div
+      style={{
+        minHeight: '100vh',
+        background: theme.background,
+        padding: '40px 20px',
+        color: theme.text,
+        textAlign: 'center',
+        position: 'relative'
+      }}
+    >
       <h1>🔍 TruthLens</h1>
+
+      <button
+        onClick={toggle}
+        style={{
+          position: 'absolute',
+          top: '20px',
+          right: '20px',
+          background: theme.surface,
+          border: `1px solid ${theme.border}`,
+          color: theme.text,
+          padding: '8px 16px',
+          borderRadius: '20px',
+          cursor: 'pointer',
+          fontSize: '0.85em'
+        }}
+      >
+        {mode === 'dark' ? '☀️ Light' : '🌙 Dark'}
+      </button>
+
       <p className="subtitle">AI-Powered Deepfake Detection</p>
 
       {!result && (
         <>
-          <div {...getRootProps()} className={`dropzone ${isDragActive ? 'active' : ''}`}>
+          <div
+            {...getRootProps()}
+            className={`dropzone ${isDragActive ? 'active' : ''}`}
+          >
             <input {...getInputProps()} />
             {file ? (
               <p>📹 {file.name}</p>
@@ -96,11 +131,13 @@ function VideoUpload() {
             )}
           </div>
 
-          <p className="file-info">Supports: MP4, AVI, MOV — Max 100 MB</p>
+          <p className="file-info">
+            Supports: MP4, AVI, MOV | Max 100 MB
+          </p>
 
           {file && !uploading && (
             <>
-              <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: '0.85em', marginBottom: '12px' }}>
+              <p style={{ opacity: 0.6, fontSize: '0.85em', marginBottom: '12px' }}>
                 {(file.size / 1024 / 1024).toFixed(2)} MB
               </p>
               <button onClick={handleUpload} className="upload-btn">
@@ -117,18 +154,26 @@ function VideoUpload() {
                   ? `Uploading... ${uploadPct}%`
                   : 'Analyzing frames... Please wait'}
               </p>
-              {/* Upload progress bar */}
-              <div style={{
-                width: '300px', height: '6px',
-                background: 'rgba(255,255,255,0.15)',
-                borderRadius: '10px', margin: '12px auto 0', overflow: 'hidden'
-              }}>
-                <div style={{
-                  width: `${uploadPct}%`, height: '100%',
-                  background: 'linear-gradient(90deg, #667eea, #764ba2)',
+
+              <div
+                style={{
+                  width: '300px',
+                  height: '6px',
+                  background: theme.border,
                   borderRadius: '10px',
-                  transition: 'width 0.3s ease'
-                }} />
+                  margin: '12px auto 0',
+                  overflow: 'hidden'
+                }}
+              >
+                <div
+                  style={{
+                    width: `${uploadPct}%`,
+                    height: '100%',
+                    background: theme.primary,
+                    borderRadius: '10px',
+                    transition: 'width 0.3s ease'
+                  }}
+                />
               </div>
             </div>
           )}

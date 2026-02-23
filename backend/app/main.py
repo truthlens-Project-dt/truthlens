@@ -12,6 +12,10 @@ import logging
 from datetime import datetime
 import time
 import uuid
+from sqlalchemy.orm import Session
+from fastapi import Depends
+from .database import create_tables, get_db
+from .db_service import save_detection, get_history, get_stats, get_detection_by_id
 
 
 # This lets Python find your ml/ folder
@@ -57,6 +61,8 @@ app = FastAPI(
     version="1.0.0",
     # Swagger docs available at: http://localhost:8000/docs
 )
+# Create DB tables on startup
+create_tables()
 
 # CORS MIDDLEWARE
 # CORS = Cross-Origin Resource Sharing
@@ -187,7 +193,10 @@ def health_check():
 
 
 @app.post("/api/v1/detect/video")
-async def detect_video(file: UploadFile = File(...)):
+async def detect_video(
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db)
+):
     request_id = str(uuid.uuid4())[:8]   # Short ID for log tracing
     start_time = time.time()
     logger.info(f"[{request_id}] 📹 Received: {file.filename}")
@@ -241,6 +250,7 @@ async def detect_video(file: UploadFile = File(...)):
             "processing_time_sec": result["processing_time_sec"],
             "timestamp":           result["timestamp"],
         })
+        save_detection(db, result)
         return JSONResponse(content=result)
 
     except ValueError as e:
@@ -290,33 +300,33 @@ async def detect_image(file: UploadFile = File(...)):
 # (Placeholder - database coming in Week 5)
 
 @app.get("/api/v1/history")
-def get_history(limit: int = 10):
-    items = list(detection_history)[:limit]
+def get_history_endpoint(
+    limit: int = 20,
+    offset: int = 0,
+    db: Session = Depends(get_db)
+):
+    items = get_history(db, limit=limit, offset=offset)
+
     return {
-        "count":      len(items),
-        "results":    items,
-        "message":    "In-memory only — resets on restart. DB coming Week 4."
+        "count": len(items),
+        "results": [
+            {
+                "request_id": d.request_id,
+                "filename": d.filename,
+                "verdict": d.verdict,
+                "confidence": d.confidence,
+                "fake_probability": d.fake_probability,
+                "frames_analyzed": d.frames_analyzed,
+                "processing_time_sec": d.processing_time_sec,
+                "timestamp": d.timestamp.isoformat(),
+            }
+            for d in items
+        ]
     }
 @app.get("/api/v1/stats")
-def get_stats():
-    """Aggregate stats across all detections this session."""
-    history = list(detection_history)
-    if not history:
-        return {"message": "No detections yet", "total": 0}
+def get_stats_endpoint(db: Session = Depends(get_db)):
+    return get_stats(db)
 
-    verdicts = [r["verdict"] for r in history]
-    times    = [r["processing_time_sec"] for r in history if r.get("processing_time_sec")]
-
-    from collections import Counter
-    verdict_counts = Counter(verdicts)
-
-    return {
-        "total_detections":    len(history),
-        "verdict_breakdown":   dict(verdict_counts),
-        "avg_processing_time": round(sum(times) / len(times), 2) if times else 0,
-        "fastest_sec":         min(times) if times else 0,
-        "slowest_sec":         max(times) if times else 0,
-    }
 @app.get("/api/v1/model/info")
 def model_info():
     """Return training metrics and model status."""
