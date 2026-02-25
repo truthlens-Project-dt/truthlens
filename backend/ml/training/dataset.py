@@ -104,6 +104,41 @@ def get_dataloaders(data_dir: str, batch_size: int = 32, val_split: float = 0.2)
     logger.info(f"Train: {len(train_subset)} | Val: {len(val_subset)}")
     return train_loader, val_loader
 
+def get_real_dataloaders(
+    train_dir: str,
+    test_dir:  str,
+    batch_size: int = 32
+):
+    """
+    For Kaggle 140k dataset structure:
+
+    data/real_dataset/real_vs_fake/real-vs-fake/
+        train/real/, train/fake/
+        valid/real/, valid/fake/
+        test/real/,  test/fake/
+    """
+
+    import sys
+    sys.path.append(str(Path(__file__).parent.parent))
+    from models.efficientnet_model import get_transforms
+
+    # Correct full paths relative to project root
+    base_path = Path("../../../data/real_dataset/real_vs_fake/real-vs-fake")
+
+    train_dir = base_path / train_dir
+    test_dir  = base_path / test_dir
+
+    train_dataset = DeepfakeDataset(str(train_dir), transform=get_transforms(train=True))
+    test_dataset  = DeepfakeDataset(str(test_dir),  transform=get_transforms(train=False))
+
+    train_loader = DataLoader(train_dataset, batch_size=batch_size,
+                              shuffle=True,  num_workers=2, pin_memory=True)
+    test_loader  = DataLoader(test_dataset,  batch_size=batch_size,
+                              shuffle=False, num_workers=2, pin_memory=True)
+
+    logger.info(f"Real data — Train: {len(train_dataset)} | Test: {len(test_dataset)}")
+    return train_loader, test_loader
+
 
 # ── Synthetic data generator for testing WITHOUT real dataset ──
 def generate_synthetic_data(output_dir: str = "data", n_per_class: int = 50):
