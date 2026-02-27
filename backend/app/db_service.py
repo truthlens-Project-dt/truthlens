@@ -75,3 +75,8 @@ def get_detection_by_id(db: Session, request_id: str) -> Optional[Detection]:
         .filter(Detection.request_id == request_id)
         .first()
     )
+def delete_all_detections(db: Session) -> int:
+    count = db.query(Detection).count()
+    db.query(Detection).delete()
+    db.commit()
+    return count

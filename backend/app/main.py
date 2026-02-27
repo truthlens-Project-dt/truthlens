@@ -323,6 +323,48 @@ def get_history_endpoint(
             for d in items
         ]
     }
+@app.get("/api/v1/history/{request_id}")
+def get_detection_detail(request_id: str, db: Session = Depends(get_db)):
+    detection = get_detection_by_id(db, request_id)
+    if not detection:
+        raise HTTPException(status_code=404, detail=f"Detection {request_id} not found")
+
+    return {
+        "request_id":          detection.request_id,
+        "filename":            detection.filename,
+        "verdict":             detection.verdict,
+        "confidence":          detection.confidence,
+        "fake_probability":    detection.fake_probability,
+        "frames_analyzed":     detection.frames_analyzed,
+        "total_frames":        detection.total_frames,
+        "processing_time_sec": detection.processing_time_sec,
+        "file_size_mb":        detection.file_size_mb,
+        "model_used":          detection.model_used,
+        "timestamp":           detection.timestamp.isoformat(),
+    }
+
+
+@app.delete("/api/v1/history/{request_id}")
+def delete_detection(request_id: str, db: Session = Depends(get_db)):
+    detection = get_detection_by_id(db, request_id)
+
+    if not detection:
+        raise HTTPException(status_code=404, detail="Not found")
+
+    db.delete(detection)
+    db.commit()
+
+    return {"message": f"Detection {request_id} deleted"}
+
+
+@app.delete("/api/v1/history")
+def clear_history(db: Session = Depends(get_db)):
+    from db_service import delete_all_detections
+
+    count = delete_all_detections(db)
+
+    return {"message": f"Deleted {count} detections"}
+
 @app.get("/api/v1/stats")
 def get_stats_endpoint(db: Session = Depends(get_db)):
     return get_stats(db)
