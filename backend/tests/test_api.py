@@ -2,16 +2,13 @@
 Basic API tests — run with: pytest backend/tests/
 File: backend/tests/test_api.py
 """
-import sys
-from pathlib import Path
-sys.path.append(str(Path(__file__).parent.parent / "app"))
 
 from fastapi.testclient import TestClient
 import pytest
 import io
 
-# Import app (ML won't load in test env — that's fine)
-from main import app
+# Correct import for FastAPI app
+from backend.app.main import app
 
 client = TestClient(app)
 
@@ -44,10 +41,12 @@ def test_stats_empty():
 def test_detect_wrong_extension():
     """Should return 400 for non-video file."""
     fake_file = io.BytesIO(b"not a video")
+
     r = client.post(
         "/api/v1/detect/video",
         files={"file": ("test.txt", fake_file, "text/plain")}
     )
+
     assert r.status_code == 400
     assert "Invalid type" in str(r.json())
 
@@ -62,3 +61,31 @@ def test_model_info():
     r = client.get("/api/v1/model/info")
     assert r.status_code == 200
     assert "model" in r.json()
+
+
+def test_history_pagination():
+    r = client.get("/api/v1/history?limit=5&offset=0")
+    assert r.status_code == 200
+    data = r.json()
+
+    assert "count" in data
+    assert "results" in data
+    assert isinstance(data["results"], list)
+
+
+def test_history_detail_not_found():
+    r = client.get("/api/v1/history/nonexistent_id")
+    assert r.status_code == 404
+
+
+def test_delete_not_found():
+    r = client.delete("/api/v1/history/nonexistent_id")
+    assert r.status_code == 404
+
+
+def test_stats_structure():
+    r = client.get("/api/v1/stats")
+    assert r.status_code == 200
+    data = r.json()
+
+    assert "total_detections" in data
