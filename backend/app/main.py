@@ -16,6 +16,10 @@ from sqlalchemy.orm import Session
 from fastapi import Depends
 from .database import create_tables, get_db
 from .db_service import save_detection, get_history, get_stats, get_detection_by_id
+from app.auth import models
+from app.auth.routes import router as auth_router
+from app.auth.auth_service import get_current_user
+from app.auth.models import User
 
 
 # This lets Python find your ml/ folder
@@ -61,6 +65,7 @@ app = FastAPI(
     version="1.0.0",
     # Swagger docs available at: http://localhost:8000/docs
 )
+app.include_router(auth_router)
 # Create DB tables on startup
 create_tables()
 
@@ -195,7 +200,8 @@ def health_check():
 @app.post("/api/v1/detect/video")
 async def detect_video(
     file: UploadFile = File(...),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ):
     request_id = str(uuid.uuid4())[:8]   # Short ID for log tracing
     start_time = time.time()
@@ -239,6 +245,7 @@ async def detect_video(
         result["timestamp"]           = datetime.now().isoformat()
         result["processing_time_sec"] = round(time.time() - start_time, 2)
         result["request_id"]          = request_id
+        result["user_id"]             = current_user.id
 
         logger.info(f"[{request_id}] ✅ {result['verdict']} ({result['confidence']:.0%}) in {result['processing_time_sec']}s")
         # Store in history

@@ -1,6 +1,7 @@
-from sqlalchemy import create_engine, Column, String, Float, Integer, DateTime
+from sqlalchemy import create_engine, Column, String, Float, Integer, DateTime, ForeignKey
 from sqlalchemy.orm import declarative_base, sessionmaker
 from datetime import datetime
+
 
 DATABASE_URL = "sqlite:///./truthlens.db"
 
@@ -38,6 +39,7 @@ class Detection(Base):
     model_used = Column(String)
 
     timestamp = Column(DateTime, default=datetime.utcnow)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
 
 
 def create_tables():

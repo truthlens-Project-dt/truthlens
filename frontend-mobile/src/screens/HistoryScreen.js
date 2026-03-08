@@ -6,8 +6,9 @@ import {
 import { useFocusEffect } from '@react-navigation/native';
 import axios from 'axios';
 import { colors } from '../theme/colors';
+import { API_BASE } from '../config';
 
-const API_BASE = 'http://localhost:8000';
+
 
 const VERDICT_COLORS = {
   AUTHENTIC:  colors.authentic,

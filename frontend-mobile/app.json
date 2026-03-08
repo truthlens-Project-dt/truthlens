@@ -24,7 +24,10 @@
       "bundleIdentifier": "com.truthlens.app"
     },
     "extra": {
-      "apiUrl": "http://YOUR_LOCAL_IP:8000"
+      "apiUrl": "http://192.168.1.8:8000",
+      "eas": {
+        "projectId": "4f1b417b-c22d-45d5-977f-f0ce7b377b0f"
+      }
     }
   }
 }

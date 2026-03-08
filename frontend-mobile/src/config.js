@@ -1,9 +1,7 @@
 import Constants from 'expo-constants';
 import { Platform } from 'react-native';
 
-// For physical device: replace with your computer's local IP
-// Find it with: ipconfig (Windows) or ifconfig (Mac)
-const LOCAL_IP = '192.168.1.YOUR_IP';   // ← CHANGE THIS
+const LOCAL_IP = '192.168.1.8';   // 
 
 export const API_BASE =
   Constants.expoConfig?.extra?.apiUrl ||
