@@ -3,7 +3,7 @@ from sqlalchemy.orm import declarative_base, sessionmaker
 from datetime import datetime
 
 
-DATABASE_URL = "sqlite:///./truthlens.db"
+from settings import DATABASE_URL
 
 engine = create_engine(
     DATABASE_URL,

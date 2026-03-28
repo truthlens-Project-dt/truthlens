@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+```jsx
+import React, { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity,
   ActivityIndicator, Alert, ScrollView
@@ -9,6 +10,10 @@ import { colors } from '../theme/colors';
 import AnimatedBar from '../components/AnimatedBar';
 import { API_BASE } from '../config';
 import ShareButton from '../components/ShareButton';
+import {
+  sendLocalNotification,
+  registerForPushNotifications
+} from '../notifications/pushService';
 
 const VERDICT_CONFIG = {
   AUTHENTIC:  { emoji: '✅', color: colors.authentic, label: 'Authentic Video' },
@@ -24,6 +29,10 @@ export default function HomeScreen() {
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
 
+  useEffect(() => {
+    registerForPushNotifications();
+  }, []);
+
   const pickVideo = async () => {
     try {
       const res = await DocumentPicker.getDocumentAsync({
@@ -31,6 +40,7 @@ export default function HomeScreen() {
         copyToCacheDirectory: true,
       });
       if (res.canceled) return;
+
       const asset = res.assets[0];
       setFile(asset);
       setResult(null);
@@ -42,6 +52,7 @@ export default function HomeScreen() {
 
   const analyzeVideo = async () => {
     if (!file) return;
+
     setUploading(true);
     setError(null);
 
@@ -58,7 +69,15 @@ export default function HomeScreen() {
         formData,
         { headers: { 'Content-Type': 'multipart/form-data' } }
       );
+
       setResult(res.data);
+
+      // 🔔 Trigger notification
+      sendLocalNotification(
+        'Analysis Complete',
+        `${res.data.verdict} — ${(res.data.confidence * 100).toFixed(0)}% confidence`
+      );
+
     } catch (err) {
       if (err.response) {
         setError(`Error ${err.response.status}: ${JSON.stringify(err.response.data)}`);
@@ -200,14 +219,11 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     paddingHorizontal: 48,
     borderRadius: 50,
-    marginTop: 10,
-    shadowColor: colors.primary,
-    shadowOpacity: 0.4,
-    shadowRadius: 10
+    marginTop: 10
   },
   analyzeBtnText: { color: colors.white, fontWeight: 'bold', fontSize: 16 },
-  loadingBox: { marginTop: 30, alignItems: 'center', gap: 12 },
-  loadingText: { color: colors.textMuted, fontSize: 14 },
+  loadingBox: { marginTop: 30, alignItems: 'center' },
+  loadingText: { color: colors.textMuted, fontSize: 14, marginTop: 10 },
   errorBox: {
     width: '100%',
     backgroundColor: 'rgba(235,51,73,0.12)',
@@ -219,7 +235,7 @@ const styles = StyleSheet.create({
   },
   errorTitle: { color: colors.error, fontWeight: 'bold', fontSize: 16, marginBottom: 8 },
   errorText: { color: colors.textMuted, fontSize: 13 },
-  dismissBtn: { marginTop: 12, alignSelf: 'flex-start' },
+  dismissBtn: { marginTop: 12 },
   dismissText: { color: colors.error, fontSize: 13 },
   resultCard: {
     width: '100%',
@@ -227,10 +243,7 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     padding: 28,
     borderTopWidth: 5,
-    marginTop: 10,
-    shadowColor: '#000',
-    shadowOpacity: 0.2,
-    shadowRadius: 20
+    marginTop: 10
   },
   resultEmoji: { fontSize: 40, textAlign: 'center', marginBottom: 6 },
   resultVerdict: { fontSize: 22, fontWeight: 'bold', textAlign: 'center', marginBottom: 20 },
@@ -241,18 +254,8 @@ const styles = StyleSheet.create({
     padding: 14,
     width: '47%'
   },
-  statLabel: {
-    fontSize: 11,
-    color: '#999',
-    textTransform: 'uppercase',
-    letterSpacing: 1
-  },
-  statValue: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#333',
-    marginTop: 4
-  },
+  statLabel: { fontSize: 11, color: '#999' },
+  statValue: { fontSize: 20, fontWeight: 'bold', color: '#333', marginTop: 4 },
   filename: { color: '#aaa', fontSize: 12, marginTop: 16 },
   resetBtn: {
     marginTop: 20,
@@ -263,3 +266,4 @@ const styles = StyleSheet.create({
   },
   resetText: { fontWeight: 'bold', fontSize: 14 },
 });
+```

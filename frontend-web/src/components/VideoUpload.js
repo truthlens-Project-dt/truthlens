@@ -1,8 +1,11 @@
+import API_BASE from "../config";
+```jsx
 import React, { useState } from "react";
 import axios from "axios";
 import { useDropzone } from "react-dropzone";
 import ResultCard from "./ResultCard";
 import { useTheme } from "../theme/ThemeContext";
+import { useAuth } from "../auth/AuthContext";
 import "./VideoUpload.css";
 
 function VideoUpload() {
@@ -13,6 +16,7 @@ function VideoUpload() {
   const [error, setError] = useState(null);
 
   const { theme, mode, toggle } = useTheme();
+  const { user, logout } = useAuth();
 
   const onDrop = (acceptedFiles) => {
     if (!acceptedFiles || acceptedFiles.length === 0) return;
@@ -88,6 +92,11 @@ function VideoUpload() {
     }
   };
 
+  const handleLogout = () => {
+    logout();
+    window.location.href = "/login";
+  };
+
   const handleReset = () => {
     setFile(null);
     setResult(null);
@@ -107,23 +116,56 @@ function VideoUpload() {
     >
       <h1>🔍 TruthLens</h1>
 
-      <button
-        onClick={toggle}
+      {/* Top Right Controls */}
+      <div
         style={{
           position: "absolute",
           top: "20px",
           right: "20px",
-          background: theme.surface,
-          border: `1px solid ${theme.border}`,
-          color: theme.text,
-          padding: "8px 16px",
-          borderRadius: "20px",
-          cursor: "pointer",
-          fontSize: "0.85em"
+          display: "flex",
+          alignItems: "center",
+          gap: "10px"
         }}
       >
-        {mode === "dark" ? "☀️ Light" : "🌙 Dark"}
-      </button>
+        <span
+          style={{
+            color: theme.text,
+            fontSize: "0.85em"
+          }}
+        >
+          👤 {user?.username || "Guest"}
+        </span>
+
+        <button
+          onClick={handleLogout}
+          style={{
+            background: theme.surface,
+            border: `1px solid ${theme.border}`,
+            color: theme.text,
+            padding: "8px 14px",
+            borderRadius: "20px",
+            cursor: "pointer",
+            fontSize: "0.8em"
+          }}
+        >
+          Log out
+        </button>
+
+        <button
+          onClick={toggle}
+          style={{
+            background: theme.surface,
+            border: `1px solid ${theme.border}`,
+            color: theme.text,
+            padding: "8px 14px",
+            borderRadius: "20px",
+            cursor: "pointer",
+            fontSize: "0.8em"
+          }}
+        >
+          {mode === "dark" ? "☀️" : "🌙"}
+        </button>
+      </div>
 
       <p className="subtitle">AI Powered Deepfake Detection</p>
 
@@ -173,7 +215,7 @@ function VideoUpload() {
               <p>
                 {uploadPct < 100
                   ? `Uploading ${uploadPct}%`
-                  : "Analyzing frames Please wait"}
+                  : "Analyzing frames... Please wait"}
               </p>
 
               <div
@@ -215,3 +257,4 @@ function VideoUpload() {
 }
 
 export default VideoUpload;
+```

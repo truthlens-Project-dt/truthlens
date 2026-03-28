@@ -16,7 +16,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 # ── Config (move to .env in production) ──────────────────
-SECRET_KEY   = "truthlens-secret-key-change-in-production-2026"
+from app.settings import SECRET_KEY
 ALGORITHM    = "HS256"
 TOKEN_EXPIRE = 60 * 24 * 7   # 7 days in minutes
 # ──────────────────────────────────────────────────────────

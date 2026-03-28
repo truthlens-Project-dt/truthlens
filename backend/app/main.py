@@ -20,6 +20,7 @@ from app.auth import models
 from app.auth.routes import router as auth_router
 from app.auth.auth_service import get_current_user
 from app.auth.models import User
+from app.settings import ALLOWED_ORIGINS
 
 
 # This lets Python find your ml/ folder
@@ -78,14 +79,10 @@ create_tables()
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3000",   # React dev server
-        "http://127.0.0.1:3000",  # Alternative localhost
-        "*"                        # Allow all (for development)
-    ],
+    allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
-    allow_methods=["*"],           # Allow GET, POST, PUT, DELETE etc.
-    allow_headers=["*"],           # Allow all headers
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 # FOLDER SETUP
