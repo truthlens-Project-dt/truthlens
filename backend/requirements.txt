@@ -1,6 +1,6 @@
 fastapi==0.109.0
 uvicorn==0.27.0
-opencv-python==4.9.0.80
+opencv-python-headless==4.9.0.80
 mtcnn==0.1.1
 pillow==10.3.0
 numpy==1.24.3
@@ -17,3 +17,8 @@ passlib==1.7.4
 bcrypt==4.1.2
 python-multipart==0.0.9
 python-dotenv==1.0.0
+```
+
+### Two changes in requirements.txt:
+- `opencv-python` → `opencv-python-headless` (no display needed on server)
+- Keep `torch` and `torchvision` here but they'll be **skipped** since Dockerfile installs CPU versions first

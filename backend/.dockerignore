@@ -1,11 +1,13 @@
 .git
 __pycache__
+**/__pycache__
 *.pyc
 *.pyo
 *.pyd
 .env
 node_modules
 venv
+.venv
 *.log
 *.csv
 *.pt
@@ -13,10 +15,10 @@ venv
 *.h5
 *.onnx
 ml/
-*.pth
-*.pt
-*.onnx
 uploads/
 videos/
 data/
 datasets/
+tests/
+*.ipynb
+README.md
