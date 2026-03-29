@@ -2,6 +2,9 @@ __pycache__/
 *.pyc
 venv/
 uploads/
-checkpoints/*.pth
-*.db
-.env
+*.mp4
+*.avi
+*.mov
+*.pth
+__pycache__/
+*.pyc
