@@ -21,6 +21,7 @@ from app.auth.routes import router as auth_router
 from app.auth.auth_service import get_current_user
 from app.auth.models import User
 from app.settings import ALLOWED_ORIGINS
+from app.notifications import PushToken
 
 
 # This lets Python find your ml/ folder
@@ -421,3 +422,20 @@ if __name__ == "__main__":
         reload=True,      # Auto-restart when you save the file (great for development!)
         log_level="info"
     )
+@app.post("/api/v1/notifications/register-token")
+def register_push_token(
+    payload: dict,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    token    = payload.get("token")
+    platform = payload.get("platform", "unknown")
+    if not token:
+        raise HTTPException(status_code=400, detail="Token required")
+
+    existing = db.query(PushToken).filter(PushToken.token == token).first()
+    if not existing:
+        db.add(PushToken(user_id=current_user.id, token=token, platform=platform))
+        db.commit()
+
+    return {"message": "Token registered"}
