@@ -22,6 +22,12 @@ from app.auth.auth_service import get_current_user
 from app.auth.models import User
 from app.settings import ALLOWED_ORIGINS
 from app.notifications import PushToken
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
+from fastapi import Request   # IMPORTANT
+from starlette.middleware.base import BaseHTTPMiddleware
+from app.middleware import log_requests, add_security_headers
 
 
 # This lets Python find your ml/ folder
@@ -67,6 +73,13 @@ app = FastAPI(
     version="1.0.0",
     # Swagger docs available at: http://localhost:8000/docs
 )
+limiter = Limiter(key_func=get_remote_address)
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+from starlette.middleware.base import BaseHTTPMiddleware
+from app.middleware import log_requests, add_security_headers
+
 app.include_router(auth_router)
 # Create DB tables on startup
 create_tables()
@@ -196,7 +209,9 @@ def health_check():
 
 
 @app.post("/api/v1/detect/video")
+@limiter.limit("10/minute")
 async def detect_video(
+    request: Request,
     file: UploadFile = File(...),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
@@ -255,7 +270,7 @@ async def detect_video(
             "processing_time_sec": result["processing_time_sec"],
             "timestamp":           result["timestamp"],
         })
-        save_detection(db, result)
+        save_detection(db, result, user_id=current_user.id)
         return JSONResponse(content=result)
 
     except ValueError as e:
