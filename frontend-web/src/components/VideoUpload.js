@@ -1,5 +1,4 @@
 import API_BASE from "../config";
-```jsx
 import React, { useState } from "react";
 import axios from "axios";
 import { useDropzone } from "react-dropzone";
@@ -53,7 +52,7 @@ function VideoUpload() {
 
     try {
       const response = await axios.post(
-        "http://localhost:8000/api/v1/detect/video",
+        `${API_BASE}/api/v1/detect/video`,
         formData,
         {
           headers: {
@@ -81,7 +80,7 @@ function VideoUpload() {
         );
       } else if (err.request) {
         setError(
-          "No response from server. Make sure your backend is running on port 8000."
+          "No response from server. Make sure your backend is running."
         );
       } else {
         setError(err.message);
@@ -116,7 +115,6 @@ function VideoUpload() {
     >
       <h1>🔍 TruthLens</h1>
 
-      {/* Top Right Controls */}
       <div
         style={{
           position: "absolute",
@@ -127,42 +125,12 @@ function VideoUpload() {
           gap: "10px"
         }}
       >
-        <span
-          style={{
-            color: theme.text,
-            fontSize: "0.85em"
-          }}
-        >
+        <span style={{ color: theme.text, fontSize: "0.85em" }}>
           👤 {user?.username || "Guest"}
         </span>
 
-        <button
-          onClick={handleLogout}
-          style={{
-            background: theme.surface,
-            border: `1px solid ${theme.border}`,
-            color: theme.text,
-            padding: "8px 14px",
-            borderRadius: "20px",
-            cursor: "pointer",
-            fontSize: "0.8em"
-          }}
-        >
-          Log out
-        </button>
-
-        <button
-          onClick={toggle}
-          style={{
-            background: theme.surface,
-            border: `1px solid ${theme.border}`,
-            color: theme.text,
-            padding: "8px 14px",
-            borderRadius: "20px",
-            cursor: "pointer",
-            fontSize: "0.8em"
-          }}
-        >
+        <button onClick={handleLogout}>Log out</button>
+        <button onClick={toggle}>
           {mode === "dark" ? "☀️" : "🌙"}
         </button>
       </div>
@@ -192,69 +160,30 @@ function VideoUpload() {
 
           {file && !uploading && (
             <>
-              <p
-                style={{
-                  opacity: 0.6,
-                  fontSize: "0.85em",
-                  marginBottom: "12px"
-                }}
-              >
+              <p style={{ opacity: 0.6 }}>
                 {(file.size / 1024 / 1024).toFixed(2)} MB
               </p>
 
-              <button onClick={handleUpload} className="upload-btn">
+              <button onClick={handleUpload}>
                 🔍 Analyze Video
               </button>
             </>
           )}
 
           {uploading && (
-            <div className="loading">
-              <div className="spinner"></div>
-
-              <p>
-                {uploadPct < 100
-                  ? `Uploading ${uploadPct}%`
-                  : "Analyzing frames... Please wait"}
-              </p>
-
-              <div
-                style={{
-                  width: "300px",
-                  height: "6px",
-                  background: theme.border,
-                  borderRadius: "10px",
-                  margin: "12px auto 0",
-                  overflow: "hidden"
-                }}
-              >
-                <div
-                  style={{
-                    width: `${uploadPct}%`,
-                    height: "100%",
-                    background: theme.primary,
-                    borderRadius: "10px",
-                    transition: "width 0.3s ease"
-                  }}
-                />
-              </div>
-            </div>
+            <p>
+              {uploadPct < 100
+                ? `Uploading ${uploadPct}%`
+                : "Analyzing..."}
+            </p>
           )}
         </>
       )}
 
-      {error && (
-        <div className="error-box">
-          <h3>❌ Error</h3>
-          <p>{error}</p>
-          <button onClick={() => setError(null)}>Dismiss</button>
-        </div>
-      )}
-
+      {error && <p>{error}</p>}
       {result && <ResultCard result={result} onReset={handleReset} />}
     </div>
   );
 }
 
 export default VideoUpload;
-```

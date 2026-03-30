@@ -19,7 +19,7 @@ export function AuthProvider({ children }) {
     } else {
       setLoading(false);
     }
-  }, []);
+  }, [token]);
 
   const register = async (email, username, password) => {
     const r = await axios.post(`${API_BASE}/api/v1/auth/register`,
