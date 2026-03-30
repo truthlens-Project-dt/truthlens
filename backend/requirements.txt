@@ -1,11 +1,13 @@
+--extra-index-url https://download.pytorch.org/whl/cpu
+
 fastapi==0.109.0
 uvicorn==0.27.0
 opencv-python-headless==4.9.0.80
-mtcnn==0.1.1
 pillow==10.3.0
 numpy==1.24.3
-torch==2.1.0
-torchvision==0.16.0
+torch==2.1.0+cpu
+torchvision==0.16.0+cpu
+facenet-pytorch==2.5.3
 timm==0.9.12
 scikit-learn==1.4.0
 matplotlib==3.8.2
@@ -19,6 +21,15 @@ python-multipart==0.0.9
 python-dotenv==1.0.0
 ```
 
-### Two changes in requirements.txt:
-- `opencv-python` → `opencv-python-headless` (no display needed on server)
-- Keep `torch` and `torchvision` here but they'll be **skipped** since Dockerfile installs CPU versions first
+---
+
+## Then verify project structure looks like this:
+```
+truthlens-1/
+├── Dockerfile          ← ROOT level
+├── .dockerignore       ← ROOT level
+├── backend/
+│   ├── requirements.txt
+│   └── app/
+│       └── main.py ...
+└── frontend/ (if any)
