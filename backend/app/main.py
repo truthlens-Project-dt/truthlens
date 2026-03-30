@@ -21,6 +21,13 @@ from app.auth.routes import router as auth_router
 from app.auth.auth_service import get_current_user
 from app.auth.models import User
 from app.settings import ALLOWED_ORIGINS
+from app.notifications import PushToken
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
+from fastapi import Request   # IMPORTANT
+from starlette.middleware.base import BaseHTTPMiddleware
+from app.middleware import log_requests, add_security_headers
 
 
 # This lets Python find your ml/ folder
@@ -66,6 +73,13 @@ app = FastAPI(
     version="1.0.0",
     # Swagger docs available at: http://localhost:8000/docs
 )
+limiter = Limiter(key_func=get_remote_address)
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+from starlette.middleware.base import BaseHTTPMiddleware
+from app.middleware import log_requests, add_security_headers
+
 app.include_router(auth_router)
 # Create DB tables on startup
 create_tables()
@@ -195,7 +209,9 @@ def health_check():
 
 
 @app.post("/api/v1/detect/video")
+@limiter.limit("10/minute")
 async def detect_video(
+    request: Request,
     file: UploadFile = File(...),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
@@ -254,7 +270,7 @@ async def detect_video(
             "processing_time_sec": result["processing_time_sec"],
             "timestamp":           result["timestamp"],
         })
-        save_detection(db, result)
+        save_detection(db, result, user_id=current_user.id)
         return JSONResponse(content=result)
 
     except ValueError as e:
@@ -307,9 +323,10 @@ async def detect_image(file: UploadFile = File(...)):
 def get_history_endpoint(
     limit: int = 20,
     offset: int = 0,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)   # 🔥 ADD THIS
 ):
-    items = get_history(db, limit=limit, offset=offset)
+    items = get_history(db, limit=limit, offset=offset,user_id=current_user.id)
 
     return {
         "count": len(items),
@@ -370,8 +387,11 @@ def clear_history(db: Session = Depends(get_db)):
     return {"message": f"Deleted {count} detections"}
 
 @app.get("/api/v1/stats")
-def get_stats_endpoint(db: Session = Depends(get_db)):
-    return get_stats(db)
+def get_stats_endpoint(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    return get_stats(db, user_id=current_user.id)
 
 @app.get("/api/v1/model/info")
 def model_info():
@@ -417,3 +437,20 @@ if __name__ == "__main__":
         reload=True,      # Auto-restart when you save the file (great for development!)
         log_level="info"
     )
+@app.post("/api/v1/notifications/register-token")
+def register_push_token(
+    payload: dict,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    token    = payload.get("token")
+    platform = payload.get("platform", "unknown")
+    if not token:
+        raise HTTPException(status_code=400, detail="Token required")
+
+    existing = db.query(PushToken).filter(PushToken.token == token).first()
+    if not existing:
+        db.add(PushToken(user_id=current_user.id, token=token, platform=platform))
+        db.commit()
+
+    return {"message": "Token registered"}
