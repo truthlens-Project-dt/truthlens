@@ -3,8 +3,6 @@ uvicorn==0.27.0
 opencv-python-headless==4.9.0.80
 pillow==10.3.0
 numpy==1.24.3
-torch==2.1.0+cpu
-torchvision==0.16.0+cpu
 facenet-pytorch==2.5.3
 timm==0.9.12
 scikit-learn==1.4.0
