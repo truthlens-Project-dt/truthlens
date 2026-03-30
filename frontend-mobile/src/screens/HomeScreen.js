@@ -1,4 +1,3 @@
-```jsx
 import React, { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity,
@@ -17,10 +16,10 @@ import {
 
 const VERDICT_CONFIG = {
   AUTHENTIC:  { emoji: '✅', color: colors.authentic, label: 'Authentic Video' },
-  FAKE:       { emoji: '❌', color: colors.fake,      label: 'Deepfake Detected' },
+  FAKE:       { emoji: '❌', color: colors.fake, label: 'Deepfake Detected' },
   SUSPICIOUS: { emoji: '⚠️', color: colors.suspicious, label: 'Suspicious' },
-  NO_FACES:   { emoji: '👤', color: colors.neutral,   label: 'No Faces Found' },
-  DEMO_MODE:  { emoji: '🔧', color: colors.primary,   label: 'Demo Mode' },
+  NO_FACES:   { emoji: '👤', color: colors.neutral, label: 'No Faces Found' },
+  DEMO_MODE:  { emoji: '🔧', color: colors.primary, label: 'Demo Mode' },
 };
 
 export default function HomeScreen() {
@@ -29,6 +28,7 @@ export default function HomeScreen() {
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
 
+  // ✅ Register push notifications ONCE
   useEffect(() => {
     registerForPushNotifications();
   }, []);
@@ -39,6 +39,7 @@ export default function HomeScreen() {
         type: ['video/mp4', 'video/x-msvideo', 'video/quicktime'],
         copyToCacheDirectory: true,
       });
+
       if (res.canceled) return;
 
       const asset = res.assets[0];
@@ -67,12 +68,14 @@ export default function HomeScreen() {
       const res = await axios.post(
         `${API_BASE}/api/v1/detect/video`,
         formData,
-        { headers: { 'Content-Type': 'multipart/form-data' } }
+        {
+          headers: { 'Content-Type': 'multipart/form-data' }
+        }
       );
 
       setResult(res.data);
 
-      // 🔔 Trigger notification
+      // 🔔 Notification AFTER success
       sendLocalNotification(
         'Analysis Complete',
         `${res.data.verdict} — ${(res.data.confidence * 100).toFixed(0)}% confidence`
@@ -82,7 +85,7 @@ export default function HomeScreen() {
       if (err.response) {
         setError(`Error ${err.response.status}: ${JSON.stringify(err.response.data)}`);
       } else {
-        setError('Could not reach server. Check your connection and API_BASE URL.');
+        setError('Could not reach server. Check your connection and API_BASE.');
       }
     } finally {
       setUploading(false);
@@ -105,23 +108,26 @@ export default function HomeScreen() {
       <Text style={styles.subtitle}>AI-Powered Deepfake Detection</Text>
 
       {!result && (
-        <TouchableOpacity style={styles.uploadBox} onPress={pickVideo} activeOpacity={0.8}>
+        <TouchableOpacity style={styles.uploadBox} onPress={pickVideo}>
           <Text style={styles.uploadIcon}>{file ? '📹' : '📤'}</Text>
           <Text style={styles.uploadText}>
             {file ? file.name : 'Tap to select video'}
           </Text>
-          {file && (
+
+          {file?.size && (
             <Text style={styles.fileSize}>
-              {file.size ? `${(file.size / 1024 / 1024).toFixed(2)} MB` : ''}
+              {(file.size / 1024 / 1024).toFixed(2)} MB
             </Text>
           )}
         </TouchableOpacity>
       )}
 
-      <Text style={styles.formats}>Supports: MP4, AVI, MOV — Max 100 MB</Text>
+      <Text style={styles.formats}>
+        Supports: MP4, AVI, MOV — Max 100 MB
+      </Text>
 
       {file && !uploading && !result && (
-        <TouchableOpacity style={styles.analyzeBtn} onPress={analyzeVideo} activeOpacity={0.85}>
+        <TouchableOpacity style={styles.analyzeBtn} onPress={analyzeVideo}>
           <Text style={styles.analyzeBtnText}>🔍 Analyze Video</Text>
         </TouchableOpacity>
       )}
@@ -137,7 +143,7 @@ export default function HomeScreen() {
         <View style={styles.errorBox}>
           <Text style={styles.errorTitle}>❌ Error</Text>
           <Text style={styles.errorText}>{error}</Text>
-          <TouchableOpacity onPress={() => setError(null)} style={styles.dismissBtn}>
+          <TouchableOpacity onPress={() => setError(null)}>
             <Text style={styles.dismissText}>Dismiss</Text>
           </TouchableOpacity>
         </View>
@@ -146,17 +152,24 @@ export default function HomeScreen() {
       {result && cfg && (
         <View style={[styles.resultCard, { borderTopColor: cfg.color }]}>
           <Text style={styles.resultEmoji}>{cfg.emoji}</Text>
-          <Text style={[styles.resultVerdict, { color: cfg.color }]}>{cfg.label}</Text>
+          <Text style={[styles.resultVerdict, { color: cfg.color }]}>
+            {cfg.label}
+          </Text>
 
           <AnimatedBar
             label="Confidence"
             value={result.confidence * 100}
             color={cfg.color}
           />
+
           <AnimatedBar
             label="Fake Probability"
             value={result.fake_probability * 100}
-            color={result.fake_probability > 0.5 ? colors.fake : colors.authentic}
+            color={
+              result.fake_probability > 0.5
+                ? colors.fake
+                : colors.authentic
+            }
           />
 
           <View style={styles.statsGrid}>
@@ -193,77 +206,3 @@ function StatBox({ label, value }) {
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  scroll: { flex: 1, backgroundColor: colors.background },
-  container: { padding: 24, alignItems: 'center', paddingBottom: 60 },
-  title: { fontSize: 36, fontWeight: 'bold', color: colors.text, marginTop: 40, marginBottom: 6 },
-  subtitle: { fontSize: 14, color: colors.textMuted, marginBottom: 30 },
-  uploadBox: {
-    width: '100%',
-    backgroundColor: colors.surface,
-    borderRadius: 20,
-    padding: 40,
-    alignItems: 'center',
-    borderWidth: 2,
-    borderColor: colors.surfaceLight,
-    borderStyle: 'dashed',
-    marginBottom: 10
-  },
-  uploadIcon: { fontSize: 36, marginBottom: 10 },
-  uploadText: { fontSize: 16, color: colors.text, textAlign: 'center' },
-  fileSize: { fontSize: 12, color: colors.textMuted, marginTop: 6 },
-  formats: { fontSize: 12, color: colors.textFaint, marginBottom: 20 },
-  analyzeBtn: {
-    backgroundColor: colors.primary,
-    paddingVertical: 16,
-    paddingHorizontal: 48,
-    borderRadius: 50,
-    marginTop: 10
-  },
-  analyzeBtnText: { color: colors.white, fontWeight: 'bold', fontSize: 16 },
-  loadingBox: { marginTop: 30, alignItems: 'center' },
-  loadingText: { color: colors.textMuted, fontSize: 14, marginTop: 10 },
-  errorBox: {
-    width: '100%',
-    backgroundColor: 'rgba(235,51,73,0.12)',
-    borderRadius: 15,
-    padding: 20,
-    marginTop: 20,
-    borderWidth: 1,
-    borderColor: 'rgba(235,51,73,0.4)'
-  },
-  errorTitle: { color: colors.error, fontWeight: 'bold', fontSize: 16, marginBottom: 8 },
-  errorText: { color: colors.textMuted, fontSize: 13 },
-  dismissBtn: { marginTop: 12 },
-  dismissText: { color: colors.error, fontSize: 13 },
-  resultCard: {
-    width: '100%',
-    backgroundColor: colors.white,
-    borderRadius: 20,
-    padding: 28,
-    borderTopWidth: 5,
-    marginTop: 10
-  },
-  resultEmoji: { fontSize: 40, textAlign: 'center', marginBottom: 6 },
-  resultVerdict: { fontSize: 22, fontWeight: 'bold', textAlign: 'center', marginBottom: 20 },
-  statsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
-  statBox: {
-    backgroundColor: '#f8f9fa',
-    borderRadius: 12,
-    padding: 14,
-    width: '47%'
-  },
-  statLabel: { fontSize: 11, color: '#999' },
-  statValue: { fontSize: 20, fontWeight: 'bold', color: '#333', marginTop: 4 },
-  filename: { color: '#aaa', fontSize: 12, marginTop: 16 },
-  resetBtn: {
-    marginTop: 20,
-    borderWidth: 1,
-    borderRadius: 50,
-    paddingVertical: 12,
-    alignItems: 'center'
-  },
-  resetText: { fontWeight: 'bold', fontSize: 14 },
-});
-```
