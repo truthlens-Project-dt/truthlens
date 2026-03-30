@@ -13,8 +13,9 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-def save_detection(db: Session, result: dict) -> Detection:
+def save_detection(db: Session, result: dict, user_id: int = None) -> Detection:
     detection = Detection(
+        user_id=user_id,
         request_id=result.get("request_id", "unknown"),
         filename=result.get("filename", ""),
         verdict=result.get("verdict", ""),
@@ -36,36 +37,35 @@ def save_detection(db: Session, result: dict) -> Detection:
     return detection
 
 
-def get_history(db: Session, limit: int = 20, offset: int = 0) -> List[Detection]:
-    return (
-        db.query(Detection)
-        .order_by(Detection.timestamp.desc())
-        .offset(offset)
-        .limit(limit)
-        .all()
-    )
+def get_history(db: Session, limit: int = 20, offset: int = 0,
+                user_id: int = None):
+    query = db.query(Detection).order_by(Detection.timestamp.desc())
+    if user_id is not None:
+        query = query.filter(Detection.user_id == user_id)
+    return query.offset(offset).limit(limit).all()
 
 
-def get_stats(db: Session) -> dict:
-    total = db.query(func.count(Detection.id)).scalar() or 0
 
+def get_stats(db: Session, user_id: int = None) -> dict:
+    query = db.query(Detection)
+    if user_id is not None:
+        query = query.filter(Detection.user_id == user_id)
+    total = query.count()
     if total == 0:
         return {"total_detections": 0}
 
-    verdicts = (
-        db.query(Detection.verdict, func.count(Detection.verdict))
-        .group_by(Detection.verdict)
-        .all()
-    )
+    verdicts = query.with_entities(
+        Detection.verdict, func.count(Detection.verdict)
+    ).group_by(Detection.verdict).all()
 
-    avg_time = db.query(func.avg(Detection.processing_time_sec)).scalar() or 0
-    avg_conf = db.query(func.avg(Detection.confidence)).scalar() or 0
+    avg_time = query.with_entities(func.avg(Detection.processing_time_sec)).scalar() or 0
+    avg_conf = query.with_entities(func.avg(Detection.confidence)).scalar() or 0
 
     return {
-        "total_detections": total,
-        "verdict_breakdown": {v: c for v, c in verdicts},
+        "total_detections":    total,
+        "verdict_breakdown":   {v: c for v, c in verdicts},
         "avg_processing_time": round(float(avg_time), 2),
-        "avg_confidence": round(float(avg_conf), 2),
+        "avg_confidence":      round(float(avg_conf), 2),
     }
 
 

@@ -307,9 +307,10 @@ async def detect_image(file: UploadFile = File(...)):
 def get_history_endpoint(
     limit: int = 20,
     offset: int = 0,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)   # 🔥 ADD THIS
 ):
-    items = get_history(db, limit=limit, offset=offset)
+    items = get_history(db, limit=limit, offset=offset,user_id=current_user.id)
 
     return {
         "count": len(items),
@@ -370,8 +371,11 @@ def clear_history(db: Session = Depends(get_db)):
     return {"message": f"Deleted {count} detections"}
 
 @app.get("/api/v1/stats")
-def get_stats_endpoint(db: Session = Depends(get_db)):
-    return get_stats(db)
+def get_stats_endpoint(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    return get_stats(db, user_id=current_user.id)
 
 @app.get("/api/v1/model/info")
 def model_info():
